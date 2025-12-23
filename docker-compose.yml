@@ -1,0 +1,42 @@
+services:
+  dgraph:
+    build: .
+    volumes:
+      - dgraph-data:/dgraph
+    ports:
+      - "8080:8080" # HTTP API
+      - "9080:9080" # gRPC
+      - "6080:6080" # Admin
+    command: >
+      sh -c "
+        # Запускаем Zero в фоне
+        dgraph zero --wal /dgraph/wal &
+        # Ждём, пока Zero запустится
+        sleep 5
+        # Запускаем Alpha, подключаясь к Zero
+        dgraph alpha --zero 127.0.0.1:5080
+      "
+    networks:
+      dgraph-net:
+        ipv4_address: 172.18.0.10
+
+  ratel:
+    image: dgraph/ratel:latest
+    ports:
+      - "8000:8000"
+    depends_on:
+      - dgraph
+    networks:
+      dgraph-net:
+        ipv4_address: 172.18.0.11
+
+networks:
+  dgraph-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/24
+
+volumes:
+  dgraph-data:
+    external: true
