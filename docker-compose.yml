@@ -1,34 +1,51 @@
 services:
-  dgraph:
-    build: .
+  zero:
+    image: dgraph/dgraph:v25.1.0
     volumes:
       - dgraph-data:/dgraph
+      - ./dgraph-secret.txt:/run/dgraph/secret:ro
     ports:
-      - "8080:8080" # HTTP API
-      - "9080:9080" # gRPC
-      - "6080:6080" # Admin
-    command: >
-      sh -c "
-        # Запускаем Zero в фоне
-        dgraph zero --wal /dgraph/wal &
-        # Ждём, пока Zero запустится
-        sleep 5
-        # Запускаем Alpha, подключаясь к Zero
-        dgraph alpha --zero 127.0.0.1:5080
-      "
+      - "5080:5080" # Zero gRPC
+      - "6080:6080" # Zero HTTP UI
     networks:
       dgraph-net:
         ipv4_address: 172.18.0.10
+    command: >
+      dgraph zero
+      --wal /dgraph/wal
+      --bindall=true
+      --my=172.18.0.10:5080
+
+  alpha:
+    image: dgraph/dgraph:v25.1.0
+    volumes:
+      - dgraph-data:/dgraph
+      - ./dgraph-secret.txt:/run/dgraph/secret:ro
+    ports:
+      - "8080:8080" # Alpha HTTP
+      - "9080:9080" # Alpha gRPC
+    depends_on:
+      - zero
+    networks:
+      dgraph-net:
+        ipv4_address: 172.18.0.11
+    command:
+      - dgraph
+      - alpha
+      - --zero=172.18.0.10:5080
+      - --my=172.18.0.11:9080
+      - --security
+      - "token=my-secret-token"
 
   ratel:
     image: dgraph/ratel:latest
     ports:
       - "8000:8000"
-    depends_on:
-      - dgraph
     networks:
       dgraph-net:
-        ipv4_address: 172.18.0.11
+        ipv4_address: 172.18.0.12
+    depends_on:
+      - alpha
 
 networks:
   dgraph-net:
