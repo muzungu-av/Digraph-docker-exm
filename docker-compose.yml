@@ -1,51 +1,125 @@
 services:
-  zero:
+  # === ZERO NODES (3 nodes) ===
+  zero1:
     image: dgraph/dgraph:v25.1.0
     volumes:
-      - dgraph-data:/dgraph
-      - ./dgraph-secret.txt:/run/dgraph/secret:ro
-    ports:
-      - "5080:5080" # Zero gRPC
-      - "6080:6080" # Zero HTTP UI
-    networks:
-      dgraph-net:
-        ipv4_address: 172.18.0.10
-    command: >
-      dgraph zero
-      --wal /dgraph/wal
-      --bindall=true
-      --my=172.18.0.10:5080
-
-  alpha:
-    image: dgraph/dgraph:v25.1.0
-    volumes:
-      - dgraph-data:/dgraph
-      - ./dgraph-secret.txt:/run/dgraph/secret:ro
-    ports:
-      - "8080:8080" # Alpha HTTP
-      - "9080:9080" # Alpha gRPC
-    depends_on:
+      - ./dgraph/zero1:/dgraph
+    command:
+      - dgraph
       - zero
+      - --raft=idx=1
+      - --my=zero1:5080
+      - --replicas=3
+      - --bindall
+    ports:
+      - "5080:5080"
+      - "6080:6080"
     networks:
       dgraph-net:
         ipv4_address: 172.18.0.11
+
+  zero2:
+    image: dgraph/dgraph:v25.1.0
+    volumes:
+      - ./dgraph/zero2:/dgraph
+    command:
+      - dgraph
+      - zero
+      - --raft=idx=2
+      - --my=zero2:5080
+      - --peer=zero1:5080
+      - --replicas=3
+      - --bindall
+    networks:
+      dgraph-net:
+        ipv4_address: 172.18.0.12
+
+  zero3:
+    image: dgraph/dgraph:v25.1.0
+    volumes:
+      - ./dgraph/zero3:/dgraph
+    command:
+      - dgraph
+      - zero
+      - --raft=idx=3
+      - --my=zero3:5080
+      - --peer=zero1:5080
+      - --replicas=3
+      - --bindall
+    networks:
+      dgraph-net:
+        ipv4_address: 172.18.0.13
+
+  # === ALPHA NODES (3 nodes) ===
+  alpha1:
+    image: dgraph/dgraph:v25.1.0
+    volumes:
+      - ./dgraph/alpha1:/dgraph
+    ports:
+      - "8080:8080" # HTTP API
+      - "9080:9080" # gRPC
+    depends_on:
+      - zero1
+    networks:
+      dgraph-net:
+        ipv4_address: 172.18.0.20
     command:
       - dgraph
       - alpha
-      - --zero=172.18.0.10:5080
-      - --my=172.18.0.11:9080
-      - --security
-      - "token=my-secret-token"
+      - --my=alpha1:7080
+      - --zero=zero1:5080
+      - --bindall
 
+  alpha2:
+    image: dgraph/dgraph:v25.1.0
+    volumes:
+      - ./dgraph/alpha2:/dgraph
+    ports:
+      - "8081:8080" # HTTP API
+      - "9081:9080" # gRPC
+    depends_on:
+      - zero1
+    networks:
+      dgraph-net:
+        ipv4_address: 172.18.0.21
+    command:
+      - dgraph
+      - alpha
+      - --my=alpha2:7080
+      - --zero=zero1:5080
+      - --bindall
+
+  alpha3:
+    image: dgraph/dgraph:v25.1.0
+    volumes:
+      - ./dgraph/alpha3:/dgraph
+    ports:
+      - "8082:8080" # HTTP API
+      - "9082:9080" # gRPC
+    depends_on:
+      - zero1
+    networks:
+      dgraph-net:
+        ipv4_address: 172.18.0.22
+    command:
+      - dgraph
+      - alpha
+      - --my=alpha3:7080
+      - --zero=zero1:5080
+      - --bindall
+
+  # === RATEL (UI) ===
   ratel:
     image: dgraph/ratel:latest
     ports:
       - "8000:8000"
     networks:
       dgraph-net:
-        ipv4_address: 172.18.0.12
+        ipv4_address: 172.18.0.30
     depends_on:
-      - alpha
+      - alpha1
+      - alpha2
+      - alpha3
 
 networks:
   dgraph-net:
@@ -53,7 +127,3 @@ networks:
     ipam:
       config:
         - subnet: 172.18.0.0/24
-
-volumes:
-  dgraph-data:
-    external: true
