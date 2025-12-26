@@ -55,6 +55,7 @@ services:
     image: dgraph/dgraph:v25.1.0
     volumes:
       - ./dgraph/alpha1:/dgraph
+      - ./dgraph/acl:/acl
     ports:
       - "8080:8080" # HTTP API
       - "9080:9080" # gRPC
@@ -69,11 +70,14 @@ services:
       - --my=alpha1:7080
       - --zero=zero1:5080
       - --bindall
+      - --acl=access-ttl=8h;jwt-alg=HS256;refresh-ttl=30d;secret-file=/acl/secret
+      - --security=whitelist=172.18.0.0/16,127.0.0.1
 
   alpha2:
     image: dgraph/dgraph:v25.1.0
     volumes:
       - ./dgraph/alpha2:/dgraph
+      - ./dgraph/acl:/acl
     ports:
       - "8081:8080" # HTTP API
       - "9081:9080" # gRPC
@@ -88,11 +92,14 @@ services:
       - --my=alpha2:7080
       - --zero=zero1:5080
       - --bindall
+      - --acl=access-ttl=8h;jwt-alg=HS256;refresh-ttl=30d;secret-file=/acl/secret
+      - --security=whitelist=172.18.0.0/16,127.0.0.1
 
   alpha3:
     image: dgraph/dgraph:v25.1.0
     volumes:
       - ./dgraph/alpha3:/dgraph
+      - ./dgraph/acl:/acl
     ports:
       - "8082:8080" # HTTP API
       - "9082:9080" # gRPC
@@ -107,6 +114,8 @@ services:
       - --my=alpha3:7080
       - --zero=zero1:5080
       - --bindall
+      - --acl=access-ttl=8h;jwt-alg=HS256;refresh-ttl=30d;secret-file=/acl/secret
+      - --security=whitelist=172.18.0.0/16,127.0.0.1
 
   # === RATEL (UI) ===
   ratel:
